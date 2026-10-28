@@ -553,9 +553,7 @@
         try { localStorage.removeItem(CONFIG_KEY); } catch (_) {}
         // Tanggal form selalu hari ini; tanggal transaksi lama tetap tersimpan di riwayat.
         refreshTodayDate();
-        // Saat halaman dibuka/di-refresh, uang awal selalu kembali ke 0 sesuai permintaan pengguna.
-        // Nilai lama di localStorage tidak dipulihkan untuk field budget.
-        uangAwal.value = '0';
+        uangAwal.value = data?.uangAwal ?? '';
         const savedRows = Array.isArray(data?.rows) ? data.rows : [];
         if (savedRows.length) savedRows.forEach(row => addRow(row));
         else addRow();
