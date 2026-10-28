@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pengeluaran Belanja Online - Versi Terbaru</title>
+  <title>Pengeluaran Belanja Online - Riwayat Harian</title>
   <style>
     :root {
       --bg: #f5f7f6;
@@ -42,6 +42,8 @@
     input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(25, 122, 97, .12); }
     .budget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .field-note { font-size: 12px; color: var(--muted); margin: 7px 0 0; }
+    .date-display { display:flex; align-items:center; gap:9px; width:100%; min-height:43px; border:1px solid #d8e0dd; border-radius:10px; padding:11px 12px; color:var(--primary-dark); background:var(--soft); font-weight:750; }
+    .date-display .calendar-icon { font-size:16px; }
     .items-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
     .items-head .section-title { margin: 0; }
     .btn { border: 0; border-radius: 10px; padding: 11px 14px; font-weight: 750; font-size: 13px; cursor: pointer; transition: transform .08s, background .15s; }
@@ -121,7 +123,7 @@
       <div class="eyebrow">Kalkulator sederhana</div>
       <h1>Pengeluaran Setelah Belanja</h1>
       <p class="subtitle">Catat belanja, lihat total pengeluaran dan sisa uang secara otomatis.</p>
-      <div class="version-note">FILE TERBARU • GOOGLE SHEETS • 28 OKTOBER 2026</div>
+      <div class="version-note">RIWAYAT HARIAN • TANGGAL OTOMATIS • GOOGLE SHEETS</div>
     </header>
 
     <section class="card no-print">
@@ -145,8 +147,10 @@
       <h2 class="section-title"><span class="number-icon">1</span> Informasi Belanja</h2>
       <div class="budget-grid">
         <div>
-          <label for="tanggal">Tanggal belanja</label>
-          <input id="tanggal" type="date" />
+          <label>Tanggal belanja (otomatis)</label>
+          <div class="date-display" aria-live="polite"><span class="calendar-icon" aria-hidden="true">📅</span><span id="tanggalHariIni">Tanggal hari ini</span></div>
+          <input id="tanggal" type="hidden" />
+          <p class="field-note">Tanggal mengikuti hari ini secara otomatis dan tidak perlu dipilih.</p>
         </div>
         <div>
           <label for="uangAwal">Uang awal / uang yang dibawa (Rp)</label>
@@ -209,7 +213,7 @@
         <h2 class="section-title"><span class="number-icon">3</span> Riwayat Transaksi</h2>
         <span class="history-count" id="historyCount">0 transaksi</span>
       </div>
-      <p class="field-note" style="margin: -5px 0 12px;">Transaksi yang sudah disimpan tetap muncul di sini setelah website ditutup.</p>
+      <p class="field-note" style="margin: -5px 0 12px;">Riwayat hanya menampilkan transaksi hari ini. Saat tanggal berganti, transaksi hari sebelumnya otomatis tidak ditampilkan di website, tetapi tetap tersimpan di Google Sheets.</p>
       <div class="table-wrap history-table">
         <table>
           <thead>
@@ -217,7 +221,7 @@
           </thead>
           <tbody id="riwayatBody"></tbody>
         </table>
-        <div class="history-empty" id="riwayatKosong">Belum ada transaksi yang disimpan.</div>
+        <div class="history-empty" id="riwayatKosong">Belum ada transaksi hari ini. Riwayat sebelumnya tetap tersimpan.</div>
       </div>
     </section>
     <div class="footer-note">Formulir tersimpan di browser. Setelah terhubung, riwayat transaksi disinkronkan ke Google Sheets. Jangan bagikan kunci akses kepada orang yang tidak dipercaya.</div>
@@ -267,13 +271,43 @@
         d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
         return d.toISOString().slice(0, 10);
       };
+      const tanggalHariIniEl = document.getElementById('tanggalHariIni');
+      function refreshTodayDate() {
+        const today = todayLocal();
+        tanggal.value = today;
+        const parts = today.split('-').map(Number);
+        const localDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (tanggalHariIniEl) {
+          tanggalHariIniEl.textContent = new Intl.DateTimeFormat('id-ID', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+          }).format(localDate);
+        }
+        return today;
+      }
       const safeText = (value) => String(value ?? '');
       const currentTotal = () => rows.reduce((sum, row) => sum + num(row.qty) * num(row.harga), 0);
       const hasCurrentItems = () => rows.some(row => row.nama.trim() || num(row.harga) > 0);
+      // Menormalisasi tanggal dari browser dan Google Sheets ke format YYYY-MM-DD.
+      // Google Sheets kadang mengembalikan tanggal sebagai teks Date lengkap, bukan YYYY-MM-DD.
+      const normalizeDateKey = (value) => {
+        if (value === null || value === undefined || value === '') return '';
+        const raw = String(value).trim();
+        const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (isoMatch) {
+          return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, '0')}-${String(isoMatch[3]).padStart(2, '0')}`;
+        }
+        const parsed = new Date(raw);
+        if (Number.isNaN(parsed.getTime())) return '';
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
       const dateLabel = (date) => {
-        if (!date) return '-';
-        const parts = String(date).split('-');
-        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : date;
+        const key = normalizeDateKey(date);
+        if (!key) return date ? String(date) : '-';
+        const [year, month, day] = key.split('-');
+        return `${day}/${month}/${year}`;
       };
       const urlReady = () => /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(SCRIPT_URL) && !SCRIPT_URL.includes('TEMPEL_URL');
       const configReady = () => Boolean(urlReady() && cloudConfig.key);
@@ -327,7 +361,7 @@
 
       function updateDailySummary() {
         const today = todayLocal();
-        const completedToday = history.filter(tx => tx.tanggal === today);
+        const completedToday = history.filter(tx => normalizeDateKey(tx.tanggal) === today);
         const savedTotal = completedToday.reduce((sum, tx) => sum + num(tx.total), 0);
         const activeAppliesToday = tanggal.value === today && hasCurrentItems();
         const total = savedTotal + (activeAppliesToday ? currentTotal() : 0);
@@ -341,6 +375,8 @@
       }
 
       function recalculate() {
+        // Set tanggal ke hari ini setiap kali form diperbarui; pengguna tidak memilih tanggal sendiri.
+        refreshTodayDate();
         const total = currentTotal();
         let count = 0;
         rows.forEach(row => {
@@ -372,7 +408,7 @@
 
       function saveData() {
         const data = {
-          tanggal: tanggal.value,
+          tanggal: refreshTodayDate(),
           uangAwal: uangAwal.value,
           rows: rows.map(({ nama, qty, harga }) => ({ nama, qty, harga }))
         };
@@ -418,8 +454,13 @@
 
       function renderHistory() {
         riwayatBody.innerHTML = '';
-        const sorted = [...history].sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
-        historyCount.textContent = `${history.length} transaksi`;
+        const today = todayLocal();
+        // Tampilkan transaksi hari ini saja; transaksi lama tetap disimpan di riwayat lokal dan Google Sheets.
+        const sorted = history
+          .filter(tx => normalizeDateKey(tx.tanggal) === today)
+          .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+        historyCount.textContent = `${sorted.length} transaksi hari ini`;
+        riwayatKosong.textContent = 'Belum ada transaksi hari ini. Riwayat tanggal sebelumnya tetap tersimpan di Google Sheets.';
         riwayatKosong.style.display = sorted.length ? 'none' : 'block';
         sorted.forEach(tx => {
           const tr = document.createElement('tr');
@@ -474,7 +515,8 @@
           };
         } catch (_) {}
         accessKeyInput.value = cloudConfig.key;
-        tanggal.value = data?.tanggal || todayLocal();
+        // Tanggal form selalu hari ini; tanggal transaksi lama tetap tersimpan di riwayat.
+        refreshTodayDate();
         uangAwal.value = data?.uangAwal ?? '';
         const savedRows = Array.isArray(data?.rows) ? data.rows : [];
         if (savedRows.length) savedRows.forEach(row => addRow(row));
@@ -511,7 +553,7 @@
           lines.push([tanggal.value || todayLocal(), 'Sedang diinput', row.nama.trim() || 'Nama barang belum diisi', qty, price, qty * price, activeTotal, uangAwal.value === '' ? '' : num(uangAwal.value)]);
         });
         const today = todayLocal();
-        const savedToday = history.filter(tx => tx.tanggal === today).reduce((sum, tx) => sum + num(tx.total), 0);
+        const savedToday = history.filter(tx => normalizeDateKey(tx.tanggal) === today).reduce((sum, tx) => sum + num(tx.total), 0);
         const currentToday = tanggal.value === today && hasCurrentItems() ? activeTotal : 0;
         lines.push([], ['Rekap Hari Ini', today, 'Total Pengeluaran (Rp)', savedToday + currentToday]);
         const csv = '\uFEFF' + lines.map(line => line.map(cell => {
@@ -534,7 +576,7 @@
           alert('Masukkan minimal satu barang sebelum menyimpan transaksi.');
           return;
         }
-        const date = tanggal.value || todayLocal();
+        const date = refreshTodayDate();
         const total = items.reduce((sum, item) => sum + num(item.qty) * num(item.harga), 0);
         const saldoAwal = uangAwal.value.trim() === '' ? null : num(uangAwal.value);
         // Saldo setelah transaksi menjadi uang awal untuk transaksi baru berikutnya.
@@ -556,7 +598,7 @@
         }
         renderHistory();
         recalculate();
-        tanggal.value = todayLocal();
+        refreshTodayDate();
         // Keep the remaining cash visible and carry it into the next transaction.
         uangAwal.value = saldoBerikutnya;
         rows = [];
@@ -579,7 +621,7 @@
         rows = [];
         nextId = 1;
         tbody.innerHTML = '';
-        tanggal.value = todayLocal();
+        refreshTodayDate();
         uangAwal.value = '';
         addRow();
         recalculate();
@@ -700,7 +742,7 @@
         row?.querySelector('.nama')?.focus();
       });
       uangAwal.addEventListener('input', () => { recalculate(); saveData(); });
-      tanggal.addEventListener('change', () => { recalculate(); saveData(); });
+      // Kolom tanggal sekarang hanya tampilan otomatis; tidak ada input tanggal manual.
       document.getElementById('transaksiBaruBtn').addEventListener('click', startNewTransaction);
       document.getElementById('unduhBtn').addEventListener('click', downloadCSV);
       document.getElementById('cetakBtn').addEventListener('click', () => window.print());
@@ -709,6 +751,16 @@
         if (saveConfig()) synchronizeCloud();
       });
       loadData();
+      // Jika website dibiarkan terbuka melewati tengah malam, tanggal form ikut berganti ke hari baru.
+      setInterval(() => {
+        const before = tanggal.value;
+        const now = refreshTodayDate();
+        if (before !== now) {
+          saveData();
+          renderHistory(); // Sembunyikan transaksi tanggal sebelumnya secara otomatis.
+          recalculate();
+        }
+      }, 60 * 1000);
     })();
   </script>
 </body>
