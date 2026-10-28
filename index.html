@@ -520,14 +520,17 @@
           deleteBtn.className = 'delete-history';
           deleteBtn.textContent = 'Hapus';
           deleteBtn.addEventListener('click', () => {
-            if (!confirm(`Hapus transaksi tanggal ${dateLabel(tx.tanggal)} dengan total ${rupiah(tx.total)} dari riwayat?`)) return;
+            if (!confirm(`Hapus transaksi tanggal ${dateLabel(tx.tanggal)} dengan total ${rupiah(tx.total)} dari riwayat?\n\nUang awal juga akan direset menjadi Rp0.`)) return;
             if (!deletedIds.includes(tx.id)) deletedIds.push(tx.id);
             history = history.filter(item => item.id !== tx.id);
+            // Sesuai permintaan: setelah riwayat transaksi dihapus, uang awal kembali ke Rp0.
+            uangAwal.value = '0';
             saveHistory();
+            saveData();
             renderHistory();
             recalculate();
             if (configReady()) synchronizeCloud();
-            else setCloudStatus('Transaksi dihapus dari perangkat. Sambungkan Google Sheets agar penghapusan diterapkan online.', 'warning');
+            else setCloudStatus('Transaksi dihapus dari perangkat. Uang awal direset ke Rp0. Sambungkan Google Sheets agar penghapusan diterapkan online.', 'warning');
           });
           actionTd.appendChild(deleteBtn);
           tr.append(dateTd, itemsTd, totalTd, actionTd);
@@ -553,7 +556,9 @@
         try { localStorage.removeItem(CONFIG_KEY); } catch (_) {}
         // Tanggal form selalu hari ini; tanggal transaksi lama tetap tersimpan di riwayat.
         refreshTodayDate();
-        uangAwal.value = data?.uangAwal ?? '';
+        // Saat halaman dibuka/di-refresh, uang awal selalu kembali ke 0 sesuai permintaan pengguna.
+        // Nilai lama di localStorage tidak dipulihkan untuk field budget.
+        uangAwal.value = '0';
         const savedRows = Array.isArray(data?.rows) ? data.rows : [];
         if (savedRows.length) savedRows.forEach(row => addRow(row));
         else addRow();
