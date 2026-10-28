@@ -123,7 +123,7 @@
       <div class="eyebrow">Kalkulator sederhana</div>
       <h1>Pengeluaran Setelah Belanja</h1>
       <p class="subtitle">Catat belanja, lihat total pengeluaran dan sisa uang secara otomatis.</p>
-      <div class="version-note">RIWAYAT HARIAN • TANGGAL OTOMATIS • GOOGLE SHEETS</div>
+      <div class="version-note">RIWAYAT HARIAN • TANGGAL OTOMATIS • GOOGLE SHEETS • KUNCI TIAP TRANSAKSI</div>
     </header>
 
     <section class="card no-print">
@@ -136,11 +136,11 @@
         </div>
       </div>
       <div class="actions">
-        <button type="button" class="btn btn-primary" id="connectBtn">Simpan Kunci & Sambungkan</button>
-        <span class="save-status">Kunci disimpan di browser ini.</span>
+        <button type="button" class="btn btn-primary" id="connectBtn">Simpan & Sambungkan</button>
+        <span class="save-status">Kunci tidak disimpan setelah digunakan.</span>
       </div>
       <div class="cloud-status warning" id="cloudStatus" role="status">Masukkan kunci akses untuk menghubungkan website ke Google Sheets.</div>
-      <p class="config-help">URL Web app sudah terpasang di website. Masukkan kunci akses yang sama persis dengan ACCESS_KEY di Code.gs. Kunci disimpan di browser ini agar tidak perlu diisi setiap kali membuka website.</p>
+      <p class="config-help">URL Web app sudah terpasang. Kunci akses tidak disimpan di browser dan kolom akan kosong setelah tombol ini ditekan. Setiap transaksi hanya bisa disimpan setelah Anda memasukkan kunci dan berhasil menekan Simpan & Sambungkan; izin tersebut berlaku untuk satu transaksi.</p>
     </section>
 
     <section class="card">
@@ -261,6 +261,8 @@
       let nextId = 1;
       let cloudConfig = { url: SCRIPT_URL, key: '' };
       let syncInProgress = false;
+      let transactionSaveAuthorized = false;
+      let transactionSaveInProgress = false;
 
       const rupiah = (value) => new Intl.NumberFormat('id-ID', {
         style: 'currency', currency: 'IDR', maximumFractionDigits: 0
@@ -438,12 +440,12 @@
           return false;
         }
         if (!key) {
-          alert('Masukkan kunci akses yang sama persis dengan ACCESS_KEY di Code.gs.');
+          alert('Masukkan kunci akses terlebih dahulu.');
           accessKeyInput.focus();
           return false;
         }
+        // Kunci hanya disimpan sementara di memori halaman, tidak disimpan ke localStorage.
         cloudConfig = { url: SCRIPT_URL, key };
-        try { localStorage.setItem(CONFIG_KEY, JSON.stringify({ key })); } catch (_) {}
         return true;
       }
 
@@ -508,13 +510,11 @@
           const storedDeleted = JSON.parse(localStorage.getItem(DELETED_KEY) || '[]');
           deletedIds = Array.isArray(storedDeleted) ? storedDeleted : [];
         } catch (_) { deletedIds = []; }
-        try {
-          const savedConfig = JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null');
-          if (savedConfig && typeof savedConfig === 'object') cloudConfig = {
-            url: SCRIPT_URL, key: String(savedConfig.key || '')
-          };
-        } catch (_) {}
-        accessKeyInput.value = cloudConfig.key;
+        // Jangan pulihkan kunci akses dari penyimpanan browser. Minta kunci setiap sesi.
+        cloudConfig = { url: SCRIPT_URL, key: '' };
+        transactionSaveAuthorized = false;
+        accessKeyInput.value = '';
+        try { localStorage.removeItem(CONFIG_KEY); } catch (_) {}
         // Tanggal form selalu hari ini; tanggal transaksi lama tetap tersimpan di riwayat.
         refreshTodayDate();
         uangAwal.value = data?.uangAwal ?? '';
@@ -523,9 +523,8 @@
         else addRow();
         renderHistory();
         recalculate();
-        if (configReady()) synchronizeCloud();
-        else if (!urlReady()) setCloudStatus('Alamat penghubung Google Sheets belum terpasang dengan benar.', 'warning');
-        else setCloudStatus('Belum tersambung. Masukkan kunci akses untuk mengaktifkan Google Sheets.', 'warning');
+        if (!urlReady()) setCloudStatus('Alamat penghubung Google Sheets belum terpasang dengan benar.', 'warning');
+        else setCloudStatus('Belum tersambung. Masukkan kunci akses, lalu klik Simpan & Sambungkan sebelum menyimpan transaksi.', 'warning');
       }
 
       function downloadCSV() {
@@ -569,6 +568,7 @@
       }
 
       async function startNewTransaction() {
+        if (transactionSaveInProgress) return;
         const items = rows
           .filter(row => row.nama.trim() || num(row.harga) > 0)
           .map(row => ({ nama: row.nama.trim() || 'Nama barang belum diisi', qty: row.qty === '' ? 1 : num(row.qty), harga: num(row.harga) }));
@@ -576,43 +576,58 @@
           alert('Masukkan minimal satu barang sebelum menyimpan transaksi.');
           return;
         }
-        const date = refreshTodayDate();
-        const total = items.reduce((sum, item) => sum + num(item.qty) * num(item.harga), 0);
-        const saldoAwal = uangAwal.value.trim() === '' ? null : num(uangAwal.value);
-        // Saldo setelah transaksi menjadi uang awal untuk transaksi baru berikutnya.
-        // Jika pengeluaran melebihi saldo, sisa uang yang bisa dibawa adalah Rp0.
-        const saldoBerikutnya = saldoAwal === null ? '' : String(Math.max(0, saldoAwal - total));
-        const transaction = {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          tanggal: date,
-          createdAt: Date.now(),
-          uangAwal: saldoAwal,
-          items,
-          total,
-          synced: false
-        };
-        history.push(transaction);
-        if (!saveHistory()) {
-          history = history.filter(tx => tx.id !== transaction.id);
+        if (!transactionSaveAuthorized || !configReady()) {
+          alert('Untuk menyimpan transaksi, masukkan kunci akses lalu klik “Simpan & Sambungkan”. Setelah koneksi berhasil, kolom kunci akan kosong dan Anda bisa menyimpan satu transaksi. Ulangi langkah ini untuk transaksi berikutnya.');
+          accessKeyInput.focus();
           return;
         }
-        renderHistory();
-        recalculate();
-        refreshTodayDate();
-        // Keep the remaining cash visible and carry it into the next transaction.
-        uangAwal.value = saldoBerikutnya;
-        rows = [];
-        nextId = 1;
-        tbody.innerHTML = '';
-        addRow();
-        recalculate();
-        saveData();
-        if (configReady()) {
-          setCloudStatus('Transaksi disimpan di perangkat. Sedang menyinkronkan ke Google Sheets…');
-          await synchronizeCloud();
-        } else {
-          saveStatus.textContent = 'Transaksi tersimpan di browser ✓';
-          setCloudStatus('Transaksi tersimpan lokal. Sambungkan Google Sheets agar dapat dilihat dari perangkat lain.', 'warning');
+
+        transactionSaveInProgress = true;
+        const saveTransactionBtn = document.getElementById('transaksiBaruBtn');
+        saveTransactionBtn.disabled = true;
+        try {
+          const date = refreshTodayDate();
+          const total = items.reduce((sum, item) => sum + num(item.qty) * num(item.harga), 0);
+          const saldoAwal = uangAwal.value.trim() === '' ? null : num(uangAwal.value);
+          // Saldo setelah transaksi menjadi uang awal untuk transaksi baru berikutnya.
+          const saldoBerikutnya = saldoAwal === null ? '' : String(Math.max(0, saldoAwal - total));
+          const transaction = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            tanggal: date,
+            createdAt: Date.now(),
+            uangAwal: saldoAwal,
+            items,
+            total,
+            synced: false
+          };
+          history.push(transaction);
+          if (!saveHistory()) {
+            history = history.filter(tx => tx.id !== transaction.id);
+            return;
+          }
+          // Izin kunci hanya berlaku untuk satu transaksi dan tidak bisa dipakai berulang.
+          transactionSaveAuthorized = false;
+          renderHistory();
+          recalculate();
+          refreshTodayDate();
+          // Keep the remaining cash visible and carry it into the next transaction.
+          uangAwal.value = saldoBerikutnya;
+          rows = [];
+          nextId = 1;
+          tbody.innerHTML = '';
+          addRow();
+          recalculate();
+          saveData();
+          if (configReady()) {
+            setCloudStatus('Transaksi disimpan di browser. Sedang menyinkronkan ke Google Sheets…');
+            await synchronizeCloud();
+          } else {
+            saveStatus.textContent = 'Transaksi tersimpan di browser ✓';
+            setCloudStatus('Transaksi tersimpan lokal. Masukkan kunci akses dan sambungkan untuk transaksi berikutnya.', 'warning');
+          }
+        } finally {
+          transactionSaveInProgress = false;
+          saveTransactionBtn.disabled = false;
         }
       }
 
@@ -666,12 +681,13 @@
         });
       }
 
-      async function synchronizeCloud() {
-        if (syncInProgress) return;
+      async function synchronizeCloud(authorizeNextTransaction = false) {
+        if (syncInProgress) return false;
         if (!configReady()) {
           setCloudStatus(!urlReady() ? 'Alamat penghubung Google Sheets belum terpasang dengan benar.' : 'Belum tersambung. Masukkan kunci akses.', 'warning');
-          return;
+          return false;
         }
+        if (authorizeNextTransaction) transactionSaveAuthorized = false;
         syncInProgress = true;
         connectBtn.disabled = true;
         connectBtn.textContent = 'Menyambungkan…';
@@ -721,13 +737,24 @@
           recalculate();
           saveStatus.textContent = 'Formulir tersimpan otomatis di browser ✓';
           const unsynced = history.filter(tx => tx.synced !== true).length;
-          setCloudStatus(unsynced
-            ? `Google Sheets terhubung, tetapi ${unsynced} transaksi masih menunggu sinkronisasi. Coba sambungkan ulang.`
-            : `Terhubung ✓ ${history.length} transaksi tersimpan dan tersinkron dengan Google Sheets.`, unsynced ? 'warning' : 'success');
+          if (authorizeNextTransaction && unsynced === 0) {
+            transactionSaveAuthorized = true;
+            setCloudStatus(`Terhubung ✓ ${history.length} transaksi tersinkron. Izin menyimpan satu transaksi sudah aktif; kolom kunci dikosongkan.`, 'success');
+          } else if (authorizeNextTransaction && unsynced > 0) {
+            transactionSaveAuthorized = false;
+            setCloudStatus(`Koneksi terhubung, tetapi ${unsynced} transaksi belum tersinkron. Periksa koneksi lalu sambungkan kembali sebelum menyimpan transaksi baru.`, 'warning');
+          } else {
+            setCloudStatus(unsynced
+              ? `Google Sheets terhubung, tetapi ${unsynced} transaksi masih menunggu sinkronisasi. Coba sambungkan ulang.`
+              : `Terhubung ✓ ${history.length} transaksi tersimpan dan tersinkron dengan Google Sheets.`, unsynced ? 'warning' : 'success');
+          }
+          return unsynced === 0;
         } catch (error) {
           console.error(error);
+          if (authorizeNextTransaction) transactionSaveAuthorized = false;
           setCloudStatus(`Belum berhasil tersambung: ${error.message} Data lokal tetap tersimpan di browser.`, 'error');
           saveStatus.textContent = 'Data lokal tersimpan. Sinkronisasi online belum terkonfirmasi.';
+          return false;
         } finally {
           syncInProgress = false;
           connectBtn.disabled = false;
@@ -747,8 +774,12 @@
       document.getElementById('unduhBtn').addEventListener('click', downloadCSV);
       document.getElementById('cetakBtn').addEventListener('click', () => window.print());
       document.getElementById('resetBtn').addEventListener('click', clearCurrentForm);
-      connectBtn.addEventListener('click', () => {
-        if (saveConfig()) synchronizeCloud();
+      connectBtn.addEventListener('click', async () => {
+        if (!saveConfig()) return;
+        // Hapus tulisan kunci dari field segera setelah dikirim; kunci tetap hanya sementara di memori halaman.
+        accessKeyInput.value = '';
+        setCloudStatus('Kunci diterima. Sedang memeriksa koneksi Google Sheets…');
+        await synchronizeCloud(true);
       });
       loadData();
       // Jika website dibiarkan terbuka melewati tengah malam, tanggal form ikut berganti ke hari baru.
