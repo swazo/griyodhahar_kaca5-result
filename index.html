@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pengeluaran Belanja Online - Batas Budget</title>
+  <title>Pengeluaran Belanja Online - Versi Ringkas</title>
   <script>
     // Saat halaman dimuat ulang, selalu mulai dari bagian paling atas.
     // Matikan pemulihan posisi scroll otomatis dari browser.
@@ -62,9 +62,6 @@
     .btn:active { transform: scale(.98); }
     .btn-primary { color: #fff; background: var(--primary); }
     .btn-primary:hover { background: var(--primary-dark); }
-    .btn-light { color: var(--primary-dark); background: var(--soft); }
-    .btn-light:hover { background: #dcefe7; }
-    .btn-plain { color: #5b6570; background: #f0f2f3; }
     .btn-danger { color: var(--danger); background: #fff0ee; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; min-width: 590px; }
@@ -73,7 +70,6 @@
     tbody tr:last-child td { border-bottom: 0; }
     td input { padding: 9px 10px !important; border-radius: 8px !important; }
     .col-no { width: 34px; color: var(--muted); text-align: center; }
-    .col-qty { width: 88px; }
     .col-price { width: 150px; }
     .col-total { width: 145px; text-align: right; font-weight: 750; white-space: nowrap; }
     .col-action { width: 45px; text-align: center; }
@@ -185,8 +181,7 @@
             <tr>
               <th class="col-no">No.</th>
               <th>Nama barang</th>
-              <th class="col-qty">Jumlah</th>
-              <th class="col-price">Harga satuan (Rp)</th>
+              <th class="col-price">Harga (Rp)</th>
               <th class="col-total">Subtotal</th>
               <th class="col-action no-print"></th>
             </tr>
@@ -198,8 +193,6 @@
       <div class="budget-warning" id="budgetWarning" role="alert" aria-live="polite"></div>
       <div class="actions no-print">
         <button type="button" class="btn btn-primary" id="transaksiBaruBtn">✓ Simpan & Mulai Transaksi Baru</button>
-        <button type="button" class="btn btn-light" id="unduhBtn">Unduh CSV</button>
-        <button type="button" class="btn btn-plain" id="cetakBtn">Cetak</button>
         <button type="button" class="btn btn-danger" id="resetBtn">Kosongkan Form</button>
         <span class="save-status" id="saveStatus">Data tersimpan otomatis di browser.</span>
       </div>
@@ -304,11 +297,8 @@
         return today;
       }
       const safeText = (value) => String(value ?? '');
-      const currentTotal = () => rows.reduce((sum, row) => {
-        // Qty yang dikosongkan mengikuti perilaku simpan: dianggap 1 untuk barang yang sudah diisi.
-        const qty = row.qty === '' ? ((row.nama.trim() || row.harga !== '') ? 1 : 0) : num(row.qty);
-        return sum + qty * num(row.harga);
-      }, 0);
+      // Setiap baris mewakili satu barang; kolom jumlah tidak digunakan.
+      const currentTotal = () => rows.reduce((sum, row) => sum + num(row.harga), 0);
       const hasCurrentItems = () => rows.some(row => row.nama.trim() || num(row.harga) > 0);
       // Menormalisasi tanggal dari browser dan Google Sheets ke format YYYY-MM-DD.
       // Google Sheets kadang mengembalikan tanggal sebagai teks Date lengkap, bukan YYYY-MM-DD.
@@ -338,18 +328,16 @@
 
       function addRow(data = {}) {
         const id = nextId++;
-        rows.push({ id, nama: safeText(data.nama), qty: data.qty ?? 1, harga: data.harga ?? '' });
+        rows.push({ id, nama: safeText(data.nama), qty: 1, harga: data.harga ?? '' });
         const tr = document.createElement('tr');
         tr.dataset.id = String(id);
         tr.innerHTML = `
           <td class="col-no row-number"></td>
           <td><input type="text" class="nama" aria-label="Nama barang" placeholder="Contoh: Beras" maxlength="120"></td>
-          <td><input type="number" class="qty" aria-label="Jumlah barang" min="0" step="any" inputmode="decimal" placeholder="1"></td>
-          <td><input type="number" class="harga" aria-label="Harga satuan" min="0" step="100" inputmode="numeric" placeholder="0"></td>
+          <td><input type="number" class="harga" aria-label="Harga barang" min="0" step="100" inputmode="numeric" placeholder="0"></td>
           <td class="col-total subtotal">Rp0</td>
           <td class="col-action no-print"><button type="button" class="remove" aria-label="Hapus barang" title="Hapus barang">×</button></td>`;
         tr.querySelector('.nama').value = safeText(data.nama);
-        tr.querySelector('.qty').value = data.qty ?? 1;
         tr.querySelector('.harga').value = data.harga ?? '';
         tr.querySelectorAll('input').forEach(input => input.addEventListener('input', () => {
           syncRow(tr); recalculate(); saveData();
@@ -370,9 +358,9 @@
         const row = rows.find(item => item.id === id);
         if (!row) return;
         row.nama = tr.querySelector('.nama').value;
-        row.qty = tr.querySelector('.qty').value === '' ? '' : num(tr.querySelector('.qty').value);
+        row.qty = 1; // Nilai tetap untuk kompatibilitas format data Google Sheets.
         row.harga = tr.querySelector('.harga').value === '' ? '' : num(tr.querySelector('.harga').value);
-        tr.querySelector('.subtotal').textContent = rupiah(num(row.qty) * num(row.harga));
+        tr.querySelector('.subtotal').textContent = rupiah(num(row.harga));
       }
 
       function renumber() {
@@ -403,7 +391,7 @@
         const total = currentTotal();
         let count = 0;
         rows.forEach(row => {
-          if (row.nama.trim() || row.harga !== '' || (row.qty !== '' && Number(row.qty) !== 1)) count++;
+          if (row.nama.trim() || row.harga !== '') count++;
         });
         totalBelanjaEl.textContent = rupiah(total);
         jumlahBarangEl.textContent = `${count} barang tercatat`;
@@ -448,7 +436,7 @@
         const data = {
           tanggal: refreshTodayDate(),
           uangAwal: uangAwal.value,
-          rows: rows.map(({ nama, qty, harga }) => ({ nama, qty, harga }))
+          rows: rows.map(({ nama, harga }) => ({ nama, harga }))
         };
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -520,14 +508,17 @@
           deleteBtn.className = 'delete-history';
           deleteBtn.textContent = 'Hapus';
           deleteBtn.addEventListener('click', () => {
-            if (!confirm(`Hapus transaksi tanggal ${dateLabel(tx.tanggal)} dengan total ${rupiah(tx.total)} dari riwayat?`)) return;
+            if (!confirm(`Hapus transaksi tanggal ${dateLabel(tx.tanggal)} dengan total ${rupiah(tx.total)} dari riwayat?\n\nUang awal juga akan direset menjadi Rp0.`)) return;
             if (!deletedIds.includes(tx.id)) deletedIds.push(tx.id);
             history = history.filter(item => item.id !== tx.id);
+            // Sesuai permintaan: setelah riwayat transaksi dihapus, uang awal kembali ke Rp0.
+            uangAwal.value = '0';
             saveHistory();
+            saveData();
             renderHistory();
             recalculate();
             if (configReady()) synchronizeCloud();
-            else setCloudStatus('Transaksi dihapus dari perangkat. Sambungkan Google Sheets agar penghapusan diterapkan online.', 'warning');
+            else setCloudStatus('Transaksi dihapus dari perangkat. Uang awal direset ke Rp0. Sambungkan Google Sheets agar penghapusan diterapkan online.', 'warning');
           });
           actionTd.appendChild(deleteBtn);
           tr.append(dateTd, itemsTd, totalTd, actionTd);
@@ -553,7 +544,9 @@
         try { localStorage.removeItem(CONFIG_KEY); } catch (_) {}
         // Tanggal form selalu hari ini; tanggal transaksi lama tetap tersimpan di riwayat.
         refreshTodayDate();
-        uangAwal.value = data?.uangAwal ?? '';
+        // Saat halaman dibuka/di-refresh, uang awal selalu kembali ke 0 sesuai permintaan pengguna.
+        // Nilai lama di localStorage tidak dipulihkan untuk field budget.
+        uangAwal.value = '0';
         const savedRows = Array.isArray(data?.rows) ? data.rows : [];
         if (savedRows.length) savedRows.forEach(row => addRow(row));
         else addRow();
@@ -563,57 +556,17 @@
         else setCloudStatus('Belum tersambung. Masukkan kunci akses, lalu klik Simpan & Sambungkan sebelum menyimpan transaksi.', 'warning');
       }
 
-      function downloadCSV() {
-        const lines = [[
-          'Tanggal', 'Status Transaksi', 'Nama Barang', 'Jumlah',
-          'Harga Satuan (Rp)', 'Subtotal (Rp)', 'Total Transaksi (Rp)', 'Uang Awal (Rp)'
-        ]];
-        history.forEach(tx => {
-          const items = Array.isArray(tx.items) ? tx.items : [];
-          if (!items.length) {
-            lines.push([tx.tanggal, 'Tersimpan', '', '', '', '', num(tx.total), tx.uangAwal ?? '']);
-          } else {
-            items.forEach(item => {
-              const qty = item.qty === '' || item.qty == null ? 1 : num(item.qty);
-              const price = num(item.harga);
-              lines.push([tx.tanggal, 'Tersimpan', item.nama || 'Barang', qty, price, qty * price, num(tx.total), tx.uangAwal ?? '']);
-            });
-          }
-        });
-        const activeItems = rows.filter(row => row.nama.trim() || num(row.harga) > 0);
-        const activeTotal = currentTotal();
-        activeItems.forEach(row => {
-          const qty = row.qty === '' ? 1 : num(row.qty);
-          const price = num(row.harga);
-          lines.push([tanggal.value || todayLocal(), 'Sedang diinput', row.nama.trim() || 'Nama barang belum diisi', qty, price, qty * price, activeTotal, uangAwal.value === '' ? '' : num(uangAwal.value)]);
-        });
-        const today = todayLocal();
-        const savedToday = history.filter(tx => normalizeDateKey(tx.tanggal) === today).reduce((sum, tx) => sum + num(tx.total), 0);
-        const currentToday = tanggal.value === today && hasCurrentItems() ? activeTotal : 0;
-        lines.push([], ['Rekap Hari Ini', today, 'Total Pengeluaran (Rp)', savedToday + currentToday]);
-        const csv = '\uFEFF' + lines.map(line => line.map(cell => {
-          const value = String(cell ?? '');
-          return '"' + value.replace(/"/g, '""') + '"';
-        }).join(',')).join('\r\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `riwayat-pengeluaran-${today}.csv`;
-        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      }
-
       async function startNewTransaction() {
         if (transactionSaveInProgress) return;
         const items = rows
           .filter(row => row.nama.trim() || num(row.harga) > 0)
-          .map(row => ({ nama: row.nama.trim() || 'Nama barang belum diisi', qty: row.qty === '' ? 1 : num(row.qty), harga: num(row.harga) }));
+          .map(row => ({ nama: row.nama.trim() || 'Nama barang belum diisi', qty: 1, harga: num(row.harga) }));
         if (!items.length) {
           alert('Masukkan minimal satu barang sebelum menyimpan transaksi.');
           return;
         }
 
-        const total = items.reduce((sum, item) => sum + num(item.qty) * num(item.harga), 0);
+        const total = items.reduce((sum, item) => sum + num(item.harga), 0);
         const saldoAwal = uangAwal.value.trim() === '' ? null : num(uangAwal.value);
         if (saldoAwal === null) {
           alert('Masukkan uang awal / budget terlebih dahulu. Transaksi tidak dapat disimpan tanpa batas budget.');
@@ -819,8 +772,6 @@
       uangAwal.addEventListener('input', () => { recalculate(); saveData(); });
       // Kolom tanggal sekarang hanya tampilan otomatis; tidak ada input tanggal manual.
       document.getElementById('transaksiBaruBtn').addEventListener('click', startNewTransaction);
-      document.getElementById('unduhBtn').addEventListener('click', downloadCSV);
-      document.getElementById('cetakBtn').addEventListener('click', () => window.print());
       document.getElementById('resetBtn').addEventListener('click', clearCurrentForm);
       connectBtn.addEventListener('click', async () => {
         if (!saveConfig()) return;
