@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pengeluaran Belanja Online - Versi Terbaru</title>
+  <style>
+    :root {
+      --bg: #f5f7f6;
+      --card: #ffffff;
+      --ink: #1f2933;
+      --muted: #667085;
+      --line: #e4e9e7;
+      --primary: #197a61;
+      --primary-dark: #12624d;
+      --soft: #eaf6f1;
+      --danger: #c0392b;
+      --shadow: 0 8px 28px rgba(24, 55, 45, .07);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .wrap { width: min(920px, calc(100% - 28px)); margin: 28px auto 40px; }
+    .hero { margin-bottom: 20px; }
+    .version-note { display:inline-block; margin-top:10px; padding:5px 9px; border-radius:999px; background:#eaf6f1; color:#12624d; font-size:11px; font-weight:800; letter-spacing:.04em; }
+    .eyebrow { color: var(--primary); font-size: 12px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    h1 { margin: 7px 0 7px; font-size: clamp(25px, 4vw, 34px); line-height: 1.15; letter-spacing: -.04em; }
+    .subtitle { color: var(--muted); margin: 0; line-height: 1.55; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
+    .section-title { display: flex; align-items: center; gap: 9px; margin: 0 0 15px; font-size: 17px; }
+    .number-icon { display: inline-grid; place-items: center; width: 30px; height: 30px; background: var(--soft); color: var(--primary); border-radius: 9px; font-size: 15px; }
+    label { display: block; color: #48525e; font-size: 13px; font-weight: 700; margin-bottom: 7px; }
+    input { font: inherit; }
+    input[type="text"], input[type="number"], input[type="date"] {
+      width: 100%; min-width: 0; border: 1px solid #d8e0dd; border-radius: 10px; padding: 11px 12px; color: var(--ink); background: #fff; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(25, 122, 97, .12); }
+    .budget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field-note { font-size: 12px; color: var(--muted); margin: 7px 0 0; }
+    .items-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .items-head .section-title { margin: 0; }
+    .btn { border: 0; border-radius: 10px; padding: 11px 14px; font-weight: 750; font-size: 13px; cursor: pointer; transition: transform .08s, background .15s; }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { color: #fff; background: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-light { color: var(--primary-dark); background: var(--soft); }
+    .btn-light:hover { background: #dcefe7; }
+    .btn-plain { color: #5b6570; background: #f0f2f3; }
+    .btn-danger { color: var(--danger); background: #fff0ee; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 590px; }
+    th { text-align: left; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-size: 11px; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+    td { padding: 9px 8px; border-bottom: 1px solid #edf0ef; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    td input { padding: 9px 10px !important; border-radius: 8px !important; }
+    .col-no { width: 34px; color: var(--muted); text-align: center; }
+    .col-qty { width: 88px; }
+    .col-price { width: 150px; }
+    .col-total { width: 145px; text-align: right; font-weight: 750; white-space: nowrap; }
+    .col-action { width: 45px; text-align: center; }
+    .remove { border: 0; background: transparent; color: #9aa3aa; font-size: 20px; cursor: pointer; line-height: 1; padding: 5px; }
+    .remove:hover { color: var(--danger); }
+    .empty { text-align: center; color: var(--muted); padding: 25px 10px; font-size: 13px; }
+    .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .metric { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: #fff; }
+    .metric-label { font-size: 13px; color: var(--muted); margin-bottom: 9px; }
+    .metric-value { font-size: clamp(22px, 4vw, 29px); font-weight: 850; letter-spacing: -.035em; overflow-wrap: anywhere; }
+    .metric.spent { background: #fffaf0; border-color: #f1e5c9; }
+    .metric.balance { background: var(--soft); border-color: #d7ebe2; }
+    .metric.balance.negative { background: #fff0ee; border-color: #f3d2cd; }
+    .metric.daily { grid-column: 1 / -1; background: #eef8f3; border-color: #d5eade; }
+    .metric.daily .metric-value { color: var(--primary-dark); }
+    .submetric { font-size: 12px; margin-top: 7px; color: var(--muted); }
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 17px; }
+    .history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .history-head .section-title { margin: 0; }
+    .history-count { color: var(--muted); font-size: 12px; }
+    .history-table table { min-width: 560px; }
+    .history-table td { font-size: 13px; }
+    .history-total { white-space: nowrap; text-align: right; font-weight: 800; }
+    .history-items { min-width: 190px; white-space: normal; color: #48525e; }
+    .delete-history { border: 0; border-radius: 8px; padding: 7px 9px; background: #fff0ee; color: var(--danger); font-weight: 700; cursor: pointer; }
+    .history-empty { color: var(--muted); text-align: center; padding: 24px 10px; font-size: 13px; }
+    .save-status { color: var(--muted); font-size: 12px; margin-left: auto; }
+    .footer-note { text-align: center; font-size: 12px; color: var(--muted); padding: 8px 0 0; }
+
+    .cloud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .cloud-status { margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+    .cloud-status.success { color: #146c43; }
+    .cloud-status.warning { color: #8a5a00; }
+    .cloud-status.error { color: var(--danger); }
+    .config-help { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 8px 0 0; }
+    .btn:disabled { opacity: .65; cursor: wait; }
+
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 20px, 920px); margin-top: 20px; }
+      .card { padding: 15px; border-radius: 15px; }
+      .budget-grid, .summary, .cloud-grid { grid-template-columns: 1fr; gap: 12px; }
+      .items-head { align-items: flex-start; }
+      .items-head .btn { white-space: nowrap; }
+      .save-status { margin-left: 0; width: 100%; }
+      .actions .btn { flex: 1 1 auto; }
+    }
+    @media print {
+      body { background: #fff; }
+      .wrap { width: 100%; margin: 0; }
+      .card, .metric { box-shadow: none; break-inside: avoid; }
+      .no-print, .actions, .remove, .col-action { display: none !important; }
+      .card { border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Kalkulator sederhana</div>
+      <h1>Pengeluaran Setelah Belanja</h1>
+      <p class="subtitle">Catat belanja, lihat total pengeluaran dan sisa uang secara otomatis.</p>
+      <div class="version-note">FILE TERBARU • GOOGLE SHEETS • 28 OKTOBER 2026</div>
+    </header>
+
+    <section class="card no-print">
+      <h2 class="section-title"><span class="number-icon">☁</span> Simpan Online ke Google Sheets</h2>
+      <p class="subtitle" style="font-size:13px; margin:-5px 0 14px;">Alamat Google Sheets ditanam di dalam file website, jadi Anda tidak perlu mengisi URL di halaman ini. Cukup masukkan kunci akses.</p>
+      <div class="cloud-grid" style="grid-template-columns:1fr;">
+        <div>
+          <label for="accessKey">Kunci akses</label>
+          <input id="accessKey" type="password" autocomplete="off" placeholder="Masukkan kunci yang sama dari Code.gs">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="connectBtn">Simpan Kunci & Sambungkan</button>
+        <span class="save-status">Kunci disimpan di browser ini.</span>
+      </div>
+      <div class="cloud-status warning" id="cloudStatus" role="status">Masukkan kunci akses untuk menghubungkan website ke Google Sheets.</div>
+      <p class="config-help">URL Web app sudah terpasang di website. Masukkan kunci akses yang sama persis dengan ACCESS_KEY di Code.gs. Kunci disimpan di browser ini agar tidak perlu diisi setiap kali membuka website.</p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title"><span class="number-icon">1</span> Informasi Belanja</h2>
+      <div class="budget-grid">
+        <div>
+          <label for="tanggal">Tanggal belanja</label>
+          <input id="tanggal" type="date" />
+        </div>
+        <div>
+          <label for="uangAwal">Uang awal / uang yang dibawa (Rp)</label>
+          <input id="uangAwal" type="number" min="0" step="1000" inputmode="numeric" placeholder="Contoh: 500000" />
+          <p class="field-note">Masukkan uang yang tersedia sebelum belanja.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="items-head">
+        <h2 class="section-title"><span class="number-icon">2</span> Daftar Barang Belanja</h2>
+        <button type="button" class="btn btn-primary" id="tambahBtn">＋ Tambah Barang</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-no">No.</th>
+              <th>Nama barang</th>
+              <th class="col-qty">Jumlah</th>
+              <th class="col-price">Harga satuan (Rp)</th>
+              <th class="col-total">Subtotal</th>
+              <th class="col-action no-print"></th>
+            </tr>
+          </thead>
+          <tbody id="daftarBarang"></tbody>
+        </table>
+        <div class="empty" id="emptyState">Belum ada barang. Tekan “Tambah Barang” untuk mulai mencatat.</div>
+      </div>
+      <div class="actions no-print">
+        <button type="button" class="btn btn-primary" id="transaksiBaruBtn">✓ Simpan & Mulai Transaksi Baru</button>
+        <button type="button" class="btn btn-light" id="unduhBtn">Unduh CSV</button>
+        <button type="button" class="btn btn-plain" id="cetakBtn">Cetak</button>
+        <button type="button" class="btn btn-danger" id="resetBtn">Kosongkan Form</button>
+        <span class="save-status" id="saveStatus">Data tersimpan otomatis di browser.</span>
+      </div>
+    </section>
+
+    <section class="summary" aria-live="polite">
+      <div class="metric daily">
+        <div class="metric-label">Total pengeluaran hari ini</div>
+        <div class="metric-value" id="totalHariIni">Rp0</div>
+        <div class="submetric" id="infoHariIni">Belum ada transaksi hari ini.</div>
+      </div>
+      <div class="metric spent">
+        <div class="metric-label">Total pengeluaran transaksi ini</div>
+        <div class="metric-value" id="totalBelanja">Rp0</div>
+        <div class="submetric" id="jumlahBarang">0 barang tercatat</div>
+      </div>
+      <div class="metric balance" id="balanceCard">
+        <div class="metric-label" id="labelSisa">Sisa uang</div>
+        <div class="metric-value" id="sisaUang">Rp0</div>
+        <div class="submetric" id="infoSisa">Isi uang awal untuk menghitung sisa uang.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="history-head">
+        <h2 class="section-title"><span class="number-icon">3</span> Riwayat Transaksi</h2>
+        <span class="history-count" id="historyCount">0 transaksi</span>
+      </div>
+      <p class="field-note" style="margin: -5px 0 12px;">Transaksi yang sudah disimpan tetap muncul di sini setelah website ditutup.</p>
+      <div class="table-wrap history-table">
+        <table>
+          <thead>
+            <tr><th>Tanggal</th><th>Barang yang dibeli</th><th style="text-align:right;">Total</th><th class="no-print">Aksi</th></tr>
+          </thead>
+          <tbody id="riwayatBody"></tbody>
+        </table>
+        <div class="history-empty" id="riwayatKosong">Belum ada transaksi yang disimpan.</div>
+      </div>
+    </section>
+    <div class="footer-note">Formulir tersimpan di browser. Setelah terhubung, riwayat transaksi disinkronkan ke Google Sheets. Jangan bagikan kunci akses kepada orang yang tidak dipercaya.</div>
+  </main>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'kalkulator_pengeluaran_belanja_v1';
+      const HISTORY_KEY = 'kalkulator_pengeluaran_riwayat_v1';
+      const DELETED_KEY = 'kalkulator_pengeluaran_terhapus_v1';
+      const CONFIG_KEY = 'kalkulator_pengeluaran_google_sheets_config_v1';
+      // URL Web app sudah dipasang. Pengguna cukup memasukkan kunci akses yang cocok dengan Code.gs.
+      const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfgMeR522d6ErhrpQno5b072hCitOIBJ86kw5yzV6Lm3kfIh7CGBOXVVIz1S-mipFv/exec';
+      const tbody = document.getElementById('daftarBarang');
+      const tanggal = document.getElementById('tanggal');
+      const uangAwal = document.getElementById('uangAwal');
+      const emptyState = document.getElementById('emptyState');
+      const totalBelanjaEl = document.getElementById('totalBelanja');
+      const jumlahBarangEl = document.getElementById('jumlahBarang');
+      const sisaUangEl = document.getElementById('sisaUang');
+      const labelSisaEl = document.getElementById('labelSisa');
+      const infoSisaEl = document.getElementById('infoSisa');
+      const balanceCard = document.getElementById('balanceCard');
+      const saveStatus = document.getElementById('saveStatus');
+      const totalHariIniEl = document.getElementById('totalHariIni');
+      const infoHariIniEl = document.getElementById('infoHariIni');
+      const riwayatBody = document.getElementById('riwayatBody');
+      const riwayatKosong = document.getElementById('riwayatKosong');
+      const historyCount = document.getElementById('historyCount');
+      const accessKeyInput = document.getElementById('accessKey');
+      const cloudStatus = document.getElementById('cloudStatus');
+      const connectBtn = document.getElementById('connectBtn');
+
+      let rows = [];
+      let history = [];
+      let deletedIds = [];
+      let nextId = 1;
+      let cloudConfig = { url: SCRIPT_URL, key: '' };
+      let syncInProgress = false;
+
+      const rupiah = (value) => new Intl.NumberFormat('id-ID', {
+        style: 'currency', currency: 'IDR', maximumFractionDigits: 0
+      }).format(Math.round(Number(value) || 0));
+      const num = (value) => Math.max(0, Number(value) || 0);
+      const todayLocal = () => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 10);
+      };
+      const safeText = (value) => String(value ?? '');
+      const currentTotal = () => rows.reduce((sum, row) => sum + num(row.qty) * num(row.harga), 0);
+      const hasCurrentItems = () => rows.some(row => row.nama.trim() || num(row.harga) > 0);
+      const dateLabel = (date) => {
+        if (!date) return '-';
+        const parts = String(date).split('-');
+        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : date;
+      };
+      const urlReady = () => /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(SCRIPT_URL) && !SCRIPT_URL.includes('TEMPEL_URL');
+      const configReady = () => Boolean(urlReady() && cloudConfig.key);
+      const deletedSet = () => new Set(deletedIds);
+
+      function addRow(data = {}) {
+        const id = nextId++;
+        rows.push({ id, nama: safeText(data.nama), qty: data.qty ?? 1, harga: data.harga ?? '' });
+        const tr = document.createElement('tr');
+        tr.dataset.id = String(id);
+        tr.innerHTML = `
+          <td class="col-no row-number"></td>
+          <td><input type="text" class="nama" aria-label="Nama barang" placeholder="Contoh: Beras" maxlength="120"></td>
+          <td><input type="number" class="qty" aria-label="Jumlah barang" min="0" step="any" inputmode="decimal" placeholder="1"></td>
+          <td><input type="number" class="harga" aria-label="Harga satuan" min="0" step="100" inputmode="numeric" placeholder="0"></td>
+          <td class="col-total subtotal">Rp0</td>
+          <td class="col-action no-print"><button type="button" class="remove" aria-label="Hapus barang" title="Hapus barang">×</button></td>`;
+        tr.querySelector('.nama').value = safeText(data.nama);
+        tr.querySelector('.qty').value = data.qty ?? 1;
+        tr.querySelector('.harga').value = data.harga ?? '';
+        tr.querySelectorAll('input').forEach(input => input.addEventListener('input', () => {
+          syncRow(tr); recalculate(); saveData();
+        }));
+        tr.querySelector('.remove').addEventListener('click', () => {
+          rows = rows.filter(row => row.id !== id);
+          tr.remove(); renumber(); recalculate(); saveData();
+        });
+        tbody.appendChild(tr);
+        syncRow(tr);
+        renumber();
+        recalculate();
+        return id;
+      }
+
+      function syncRow(tr) {
+        const id = Number(tr.dataset.id);
+        const row = rows.find(item => item.id === id);
+        if (!row) return;
+        row.nama = tr.querySelector('.nama').value;
+        row.qty = tr.querySelector('.qty').value === '' ? '' : num(tr.querySelector('.qty').value);
+        row.harga = tr.querySelector('.harga').value === '' ? '' : num(tr.querySelector('.harga').value);
+        tr.querySelector('.subtotal').textContent = rupiah(num(row.qty) * num(row.harga));
+      }
+
+      function renumber() {
+        [...tbody.querySelectorAll('tr')].forEach((tr, index) => {
+          tr.querySelector('.row-number').textContent = index + 1;
+        });
+        emptyState.style.display = rows.length ? 'none' : 'block';
+      }
+
+      function updateDailySummary() {
+        const today = todayLocal();
+        const completedToday = history.filter(tx => tx.tanggal === today);
+        const savedTotal = completedToday.reduce((sum, tx) => sum + num(tx.total), 0);
+        const activeAppliesToday = tanggal.value === today && hasCurrentItems();
+        const total = savedTotal + (activeAppliesToday ? currentTotal() : 0);
+        const count = completedToday.length + (activeAppliesToday ? 1 : 0);
+        totalHariIniEl.textContent = rupiah(total);
+        if (!count) {
+          infoHariIniEl.textContent = 'Belum ada transaksi hari ini.';
+        } else {
+          infoHariIniEl.textContent = `${count} transaksi hari ini${activeAppliesToday ? ' · Termasuk transaksi yang sedang diinput' : ''}`;
+        }
+      }
+
+      function recalculate() {
+        const total = currentTotal();
+        let count = 0;
+        rows.forEach(row => {
+          if (row.nama.trim() || row.harga !== '' || (row.qty !== '' && Number(row.qty) !== 1)) count++;
+        });
+        totalBelanjaEl.textContent = rupiah(total);
+        jumlahBarangEl.textContent = `${count} barang tercatat`;
+        const awal = uangAwal.value.trim() === '' ? null : num(uangAwal.value);
+        balanceCard.classList.remove('negative');
+        if (awal === null) {
+          labelSisaEl.textContent = 'Sisa uang';
+          sisaUangEl.textContent = '—';
+          infoSisaEl.textContent = 'Isi uang awal untuk menghitung sisa uang.';
+        } else {
+          const sisa = awal - total;
+          if (sisa < 0) {
+            balanceCard.classList.add('negative');
+            labelSisaEl.textContent = 'Kekurangan uang';
+            sisaUangEl.textContent = rupiah(Math.abs(sisa));
+            infoSisaEl.textContent = 'Total belanja melebihi uang awal.';
+          } else {
+            labelSisaEl.textContent = 'Sisa uang';
+            sisaUangEl.textContent = rupiah(sisa);
+            infoSisaEl.textContent = 'Uang awal dikurangi total belanja.';
+          }
+        }
+        updateDailySummary();
+      }
+
+      function saveData() {
+        const data = {
+          tanggal: tanggal.value,
+          uangAwal: uangAwal.value,
+          rows: rows.map(({ nama, qty, harga }) => ({ nama, qty, harga }))
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          saveStatus.textContent = 'Formulir tersimpan otomatis di browser ✓';
+        } catch (error) {
+          saveStatus.textContent = 'Penyimpanan browser tidak tersedia.';
+        }
+      }
+
+      function saveHistory() {
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+          localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds));
+          return true;
+        } catch (error) {
+          alert('Riwayat belum bisa disimpan di browser. Data form tidak dikosongkan.');
+          return false;
+        }
+      }
+
+      function saveConfig() {
+        const key = accessKeyInput.value.trim();
+        if (!urlReady()) {
+          alert('Alamat penghubung Google Sheets belum terpasang dengan benar.');
+          return false;
+        }
+        if (!key) {
+          alert('Masukkan kunci akses yang sama persis dengan ACCESS_KEY di Code.gs.');
+          accessKeyInput.focus();
+          return false;
+        }
+        cloudConfig = { url: SCRIPT_URL, key };
+        try { localStorage.setItem(CONFIG_KEY, JSON.stringify({ key })); } catch (_) {}
+        return true;
+      }
+
+      function setCloudStatus(message, type = '') {
+        cloudStatus.textContent = message;
+        cloudStatus.className = 'cloud-status' + (type ? ' ' + type : '');
+      }
+
+      function renderHistory() {
+        riwayatBody.innerHTML = '';
+        const sorted = [...history].sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+        historyCount.textContent = `${history.length} transaksi`;
+        riwayatKosong.style.display = sorted.length ? 'none' : 'block';
+        sorted.forEach(tx => {
+          const tr = document.createElement('tr');
+          const dateTd = document.createElement('td');
+          dateTd.textContent = dateLabel(tx.tanggal);
+          const itemsTd = document.createElement('td');
+          itemsTd.className = 'history-items';
+          itemsTd.textContent = (Array.isArray(tx.items) ? tx.items : []).map(item => {
+            const qty = item.qty === '' || item.qty == null ? 1 : item.qty;
+            return `${item.nama || 'Barang'} (${qty})`;
+          }).join(', ') || 'Belanja';
+          const totalTd = document.createElement('td');
+          totalTd.className = 'history-total';
+          totalTd.textContent = rupiah(tx.total);
+          const actionTd = document.createElement('td');
+          actionTd.className = 'no-print';
+          const deleteBtn = document.createElement('button');
+          deleteBtn.type = 'button';
+          deleteBtn.className = 'delete-history';
+          deleteBtn.textContent = 'Hapus';
+          deleteBtn.addEventListener('click', () => {
+            if (!confirm(`Hapus transaksi tanggal ${dateLabel(tx.tanggal)} dengan total ${rupiah(tx.total)} dari riwayat?`)) return;
+            if (!deletedIds.includes(tx.id)) deletedIds.push(tx.id);
+            history = history.filter(item => item.id !== tx.id);
+            saveHistory();
+            renderHistory();
+            recalculate();
+            if (configReady()) synchronizeCloud();
+            else setCloudStatus('Transaksi dihapus dari perangkat. Sambungkan Google Sheets agar penghapusan diterapkan online.', 'warning');
+          });
+          actionTd.appendChild(deleteBtn);
+          tr.append(dateTd, itemsTd, totalTd, actionTd);
+          riwayatBody.appendChild(tr);
+        });
+      }
+
+      function loadData() {
+        let data = null;
+        try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (_) {}
+        try {
+          const storedHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+          history = Array.isArray(storedHistory) ? storedHistory : [];
+        } catch (_) { history = []; }
+        try {
+          const storedDeleted = JSON.parse(localStorage.getItem(DELETED_KEY) || '[]');
+          deletedIds = Array.isArray(storedDeleted) ? storedDeleted : [];
+        } catch (_) { deletedIds = []; }
+        try {
+          const savedConfig = JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null');
+          if (savedConfig && typeof savedConfig === 'object') cloudConfig = {
+            url: SCRIPT_URL, key: String(savedConfig.key || '')
+          };
+        } catch (_) {}
+        accessKeyInput.value = cloudConfig.key;
+        tanggal.value = data?.tanggal || todayLocal();
+        uangAwal.value = data?.uangAwal ?? '';
+        const savedRows = Array.isArray(data?.rows) ? data.rows : [];
+        if (savedRows.length) savedRows.forEach(row => addRow(row));
+        else addRow();
+        renderHistory();
+        recalculate();
+        if (configReady()) synchronizeCloud();
+        else if (!urlReady()) setCloudStatus('Alamat penghubung Google Sheets belum terpasang dengan benar.', 'warning');
+        else setCloudStatus('Belum tersambung. Masukkan kunci akses untuk mengaktifkan Google Sheets.', 'warning');
+      }
+
+      function downloadCSV() {
+        const lines = [[
+          'Tanggal', 'Status Transaksi', 'Nama Barang', 'Jumlah',
+          'Harga Satuan (Rp)', 'Subtotal (Rp)', 'Total Transaksi (Rp)', 'Uang Awal (Rp)'
+        ]];
+        history.forEach(tx => {
+          const items = Array.isArray(tx.items) ? tx.items : [];
+          if (!items.length) {
+            lines.push([tx.tanggal, 'Tersimpan', '', '', '', '', num(tx.total), tx.uangAwal ?? '']);
+          } else {
+            items.forEach(item => {
+              const qty = item.qty === '' || item.qty == null ? 1 : num(item.qty);
+              const price = num(item.harga);
+              lines.push([tx.tanggal, 'Tersimpan', item.nama || 'Barang', qty, price, qty * price, num(tx.total), tx.uangAwal ?? '']);
+            });
+          }
+        });
+        const activeItems = rows.filter(row => row.nama.trim() || num(row.harga) > 0);
+        const activeTotal = currentTotal();
+        activeItems.forEach(row => {
+          const qty = row.qty === '' ? 1 : num(row.qty);
+          const price = num(row.harga);
+          lines.push([tanggal.value || todayLocal(), 'Sedang diinput', row.nama.trim() || 'Nama barang belum diisi', qty, price, qty * price, activeTotal, uangAwal.value === '' ? '' : num(uangAwal.value)]);
+        });
+        const today = todayLocal();
+        const savedToday = history.filter(tx => tx.tanggal === today).reduce((sum, tx) => sum + num(tx.total), 0);
+        const currentToday = tanggal.value === today && hasCurrentItems() ? activeTotal : 0;
+        lines.push([], ['Rekap Hari Ini', today, 'Total Pengeluaran (Rp)', savedToday + currentToday]);
+        const csv = '\uFEFF' + lines.map(line => line.map(cell => {
+          const value = String(cell ?? '');
+          return '"' + value.replace(/"/g, '""') + '"';
+        }).join(',')).join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `riwayat-pengeluaran-${today}.csv`;
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      }
+
+      async function startNewTransaction() {
+        const items = rows
+          .filter(row => row.nama.trim() || num(row.harga) > 0)
+          .map(row => ({ nama: row.nama.trim() || 'Nama barang belum diisi', qty: row.qty === '' ? 1 : num(row.qty), harga: num(row.harga) }));
+        if (!items.length) {
+          alert('Masukkan minimal satu barang sebelum menyimpan transaksi.');
+          return;
+        }
+        const date = tanggal.value || todayLocal();
+        const total = items.reduce((sum, item) => sum + num(item.qty) * num(item.harga), 0);
+        const transaction = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          tanggal: date,
+          createdAt: Date.now(),
+          uangAwal: uangAwal.value === '' ? null : num(uangAwal.value),
+          items,
+          total,
+          synced: false
+        };
+        history.push(transaction);
+        if (!saveHistory()) {
+          history = history.filter(tx => tx.id !== transaction.id);
+          return;
+        }
+        renderHistory();
+        recalculate();
+        tanggal.value = todayLocal();
+        uangAwal.value = '';
+        rows = [];
+        nextId = 1;
+        tbody.innerHTML = '';
+        addRow();
+        recalculate();
+        saveData();
+        if (configReady()) {
+          setCloudStatus('Transaksi disimpan di perangkat. Sedang menyinkronkan ke Google Sheets…');
+          await synchronizeCloud();
+        } else {
+          saveStatus.textContent = 'Transaksi tersimpan di browser ✓';
+          setCloudStatus('Transaksi tersimpan lokal. Sambungkan Google Sheets agar dapat dilihat dari perangkat lain.', 'warning');
+        }
+      }
+
+      function clearCurrentForm() {
+        if (!confirm('Kosongkan transaksi yang sedang diinput? Riwayat transaksi yang sudah disimpan tetap aman.')) return;
+        rows = [];
+        nextId = 1;
+        tbody.innerHTML = '';
+        tanggal.value = todayLocal();
+        uangAwal.value = '';
+        addRow();
+        recalculate();
+        saveData();
+      }
+
+      function jsonpList() {
+        return new Promise((resolve, reject) => {
+          if (!configReady()) return reject(new Error(!urlReady() ? 'Alamat penghubung Google Sheets belum terpasang dengan benar.' : 'Kunci akses belum diisi.'));
+          // Gunakan nama callback yang sama dengan tautan tes yang sudah terbukti berhasil.
+          // Hanya ada satu proses sinkronisasi sekaligus, jadi nama ini aman digunakan di sini.
+          const callbackName = '__pengeluaranCb_test';
+          const script = document.createElement('script');
+          let timeoutId;
+          const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            delete window[callbackName];
+            script.remove();
+          };
+          window[callbackName] = (result) => {
+            cleanup();
+            if (!result || !result.ok) reject(new Error(result?.error || 'Google Sheets mengembalikan respons yang tidak dikenal.'));
+            else resolve(Array.isArray(result.transactions) ? result.transactions : []);
+          };
+          script.onerror = () => { cleanup(); reject(new Error('Koneksi gagal pada FILE TERBARU. Karena tes URL sebelumnya berhasil, tutup tab website lama dan buka file BUKA-INi-Pengeluaran-Belanja-Online.html yang memiliki label FILE TERBARU di bagian atas.')); };
+          timeoutId = setTimeout(() => { cleanup(); reject(new Error('Koneksi Google Sheets terlalu lama. Coba sambungkan lagi.')); }, 15000);
+          const separator = SCRIPT_URL.includes('?') ? '&' : '?';
+          script.src = `${SCRIPT_URL}${separator}action=list&key=${encodeURIComponent(cloudConfig.key)}&callback=${callbackName}&_=${Date.now()}`;
+          document.head.appendChild(script);
+        });
+      }
+
+      async function postCloud(payload) {
+        if (!configReady()) throw new Error('Google Sheets belum dikonfigurasi.');
+        // text/plain avoids a browser CORS preflight; response is verified with a JSONP read.
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify({ ...payload, key: cloudConfig.key })
+        });
+      }
+
+      async function synchronizeCloud() {
+        if (syncInProgress) return;
+        if (!configReady()) {
+          setCloudStatus(!urlReady() ? 'Alamat penghubung Google Sheets belum terpasang dengan benar.' : 'Belum tersambung. Masukkan kunci akses.', 'warning');
+          return;
+        }
+        syncInProgress = true;
+        connectBtn.disabled = true;
+        connectBtn.textContent = 'Menyambungkan…';
+        setCloudStatus('Sedang menghubungkan dan menyamakan data dengan Google Sheets…');
+        try {
+          let cloudHistory = await jsonpList();
+          let cloudIds = new Set(cloudHistory.map(tx => String(tx.id)));
+          let deletedRemote = false;
+          for (const id of [...deletedIds]) {
+            if (cloudIds.has(String(id))) {
+              await postCloud({ action: 'delete', id: String(id) });
+              deletedRemote = true;
+            }
+          }
+          if (deletedRemote) {
+            cloudHistory = await jsonpList();
+            cloudIds = new Set(cloudHistory.map(tx => String(tx.id)));
+          }
+
+          const tombstones = deletedSet();
+          const pending = history.filter(tx => tx && tx.id && tx.synced !== true && !cloudIds.has(String(tx.id)) && !tombstones.has(String(tx.id)));
+          for (const tx of pending) {
+            await postCloud({ action: 'save', transaction: tx });
+          }
+          if (pending.length) {
+            cloudHistory = await jsonpList();
+            cloudIds = new Set(cloudHistory.map(tx => String(tx.id)));
+          }
+
+          // Confirmed deletions can be removed from the local tombstone list.
+          deletedIds = deletedIds.filter(id => cloudIds.has(String(id)));
+          const merged = new Map();
+          const ignored = deletedSet();
+          cloudHistory.forEach(tx => {
+            const id = String(tx.id);
+            if (!ignored.has(id)) merged.set(id, { ...tx, synced: true });
+          });
+          history.forEach(tx => {
+            const id = String(tx.id);
+            if (!id || ignored.has(id)) return;
+            if (merged.has(id)) merged.set(id, { ...merged.get(id), synced: true });
+            else merged.set(id, { ...tx, synced: false });
+          });
+          history = [...merged.values()].sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+          saveHistory();
+          renderHistory();
+          recalculate();
+          saveStatus.textContent = 'Formulir tersimpan otomatis di browser ✓';
+          const unsynced = history.filter(tx => tx.synced !== true).length;
+          setCloudStatus(unsynced
+            ? `Google Sheets terhubung, tetapi ${unsynced} transaksi masih menunggu sinkronisasi. Coba sambungkan ulang.`
+            : `Terhubung ✓ ${history.length} transaksi tersimpan dan tersinkron dengan Google Sheets.`, unsynced ? 'warning' : 'success');
+        } catch (error) {
+          console.error(error);
+          setCloudStatus(`Belum berhasil tersambung: ${error.message} Data lokal tetap tersimpan di browser.`, 'error');
+          saveStatus.textContent = 'Data lokal tersimpan. Sinkronisasi online belum terkonfirmasi.';
+        } finally {
+          syncInProgress = false;
+          connectBtn.disabled = false;
+          connectBtn.textContent = 'Simpan & Sambungkan';
+        }
+      }
+
+      document.getElementById('tambahBtn').addEventListener('click', () => {
+        const id = addRow();
+        saveData();
+        const row = tbody.querySelector(`tr[data-id="${id}"]`);
+        row?.querySelector('.nama')?.focus();
+      });
+      uangAwal.addEventListener('input', () => { recalculate(); saveData(); });
+      tanggal.addEventListener('change', () => { recalculate(); saveData(); });
+      document.getElementById('transaksiBaruBtn').addEventListener('click', startNewTransaction);
+      document.getElementById('unduhBtn').addEventListener('click', downloadCSV);
+      document.getElementById('cetakBtn').addEventListener('click', () => window.print());
+      document.getElementById('resetBtn').addEventListener('click', clearCurrentForm);
+      connectBtn.addEventListener('click', () => {
+        if (saveConfig()) synchronizeCloud();
+      });
+      loadData();
+    })();
+  </script>
+</body>
+</html>
