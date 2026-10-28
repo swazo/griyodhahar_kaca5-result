@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pengeluaran Belanja Online - Riwayat Harian</title>
+  <title>Pengeluaran Belanja Online - Batas Budget</title>
   <style>
     :root {
       --bg: #f5f7f6;
@@ -97,7 +97,9 @@
     .cloud-status.warning { color: #8a5a00; }
     .cloud-status.error { color: var(--danger); }
     .config-help { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 8px 0 0; }
-    .btn:disabled { opacity: .65; cursor: wait; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .budget-warning { display: none; margin: 14px 0 0; padding: 12px 14px; border: 1px solid #f1c5bf; border-radius: 10px; background: #fff1ef; color: #9f2d23; font-size: 13px; line-height: 1.5; font-weight: 650; }
+    .budget-warning.show { display: block; }
 
     @media (max-width: 560px) {
       .wrap { width: min(100% - 20px, 920px); margin-top: 20px; }
@@ -123,7 +125,7 @@
       <div class="eyebrow">Kalkulator sederhana</div>
       <h1>Pengeluaran Setelah Belanja</h1>
       <p class="subtitle">Catat belanja, lihat total pengeluaran dan sisa uang secara otomatis.</p>
-      <div class="version-note">RIWAYAT HARIAN • TANGGAL OTOMATIS • GOOGLE SHEETS • KUNCI TIAP TRANSAKSI</div>
+      <div class="version-note">RIWAYAT HARIAN • TANGGAL OTOMATIS • GOOGLE SHEETS • BATAS BUDGET AKTIF</div>
     </header>
 
     <section class="card no-print">
@@ -181,6 +183,7 @@
         </table>
         <div class="empty" id="emptyState">Belum ada barang. Tekan “Tambah Barang” untuk mulai mencatat.</div>
       </div>
+      <div class="budget-warning" id="budgetWarning" role="alert" aria-live="polite"></div>
       <div class="actions no-print">
         <button type="button" class="btn btn-primary" id="transaksiBaruBtn">✓ Simpan & Mulai Transaksi Baru</button>
         <button type="button" class="btn btn-light" id="unduhBtn">Unduh CSV</button>
@@ -254,6 +257,8 @@
       const accessKeyInput = document.getElementById('accessKey');
       const cloudStatus = document.getElementById('cloudStatus');
       const connectBtn = document.getElementById('connectBtn');
+      const budgetWarning = document.getElementById('budgetWarning');
+      const saveTransactionBtn = document.getElementById('transaksiBaruBtn');
 
       let rows = [];
       let history = [];
@@ -287,7 +292,11 @@
         return today;
       }
       const safeText = (value) => String(value ?? '');
-      const currentTotal = () => rows.reduce((sum, row) => sum + num(row.qty) * num(row.harga), 0);
+      const currentTotal = () => rows.reduce((sum, row) => {
+        // Qty yang dikosongkan mengikuti perilaku simpan: dianggap 1 untuk barang yang sudah diisi.
+        const qty = row.qty === '' ? ((row.nama.trim() || row.harga !== '') ? 1 : 0) : num(row.qty);
+        return sum + qty * num(row.harga);
+      }, 0);
       const hasCurrentItems = () => rows.some(row => row.nama.trim() || num(row.harga) > 0);
       // Menormalisasi tanggal dari browser dan Google Sheets ke format YYYY-MM-DD.
       // Google Sheets kadang mengembalikan tanggal sebagai teks Date lengkap, bukan YYYY-MM-DD.
@@ -405,6 +414,21 @@
             infoSisaEl.textContent = 'Uang awal dikurangi total belanja.';
           }
         }
+
+        // Cegah penyimpanan jika total belanja melebihi uang awal/budget.
+        const overBudget = awal !== null && total > awal;
+        if (overBudget) {
+          const selisih = total - awal;
+          budgetWarning.textContent = `Pengeluaran melebihi budget sebesar ${rupiah(selisih)}. Total belanja ${rupiah(total)}, sedangkan uang awal hanya ${rupiah(awal)}. Kurangi jumlah atau harga barang agar transaksi bisa disimpan.`;
+          budgetWarning.classList.add('show');
+        } else if (awal === null && hasCurrentItems()) {
+          budgetWarning.textContent = 'Masukkan uang awal / budget terlebih dahulu. Transaksi tidak dapat disimpan sebelum budget ditentukan.';
+          budgetWarning.classList.add('show');
+        } else {
+          budgetWarning.textContent = '';
+          budgetWarning.classList.remove('show');
+        }
+        saveTransactionBtn.disabled = transactionSaveInProgress || overBudget;
         updateDailySummary();
       }
 
@@ -576,6 +600,21 @@
           alert('Masukkan minimal satu barang sebelum menyimpan transaksi.');
           return;
         }
+
+        const total = items.reduce((sum, item) => sum + num(item.qty) * num(item.harga), 0);
+        const saldoAwal = uangAwal.value.trim() === '' ? null : num(uangAwal.value);
+        if (saldoAwal === null) {
+          alert('Masukkan uang awal / budget terlebih dahulu. Transaksi tidak dapat disimpan tanpa batas budget.');
+          uangAwal.focus();
+          return;
+        }
+        if (total > saldoAwal) {
+          alert(`Transaksi tidak bisa disimpan karena melebihi budget.\n\nUang awal: ${rupiah(saldoAwal)}\nTotal belanja: ${rupiah(total)}\nMelebihi budget: ${rupiah(total - saldoAwal)}\n\nSilakan kurangi jumlah atau harga barang terlebih dahulu.`);
+          budgetWarning.classList.add('show');
+          uangAwal.focus();
+          return;
+        }
+
         if (!transactionSaveAuthorized || !configReady()) {
           alert('Untuk menyimpan transaksi, masukkan kunci akses lalu klik “Simpan & Sambungkan”. Setelah koneksi berhasil, kolom kunci akan kosong dan Anda bisa menyimpan satu transaksi. Ulangi langkah ini untuk transaksi berikutnya.');
           accessKeyInput.focus();
@@ -583,12 +622,9 @@
         }
 
         transactionSaveInProgress = true;
-        const saveTransactionBtn = document.getElementById('transaksiBaruBtn');
         saveTransactionBtn.disabled = true;
         try {
           const date = refreshTodayDate();
-          const total = items.reduce((sum, item) => sum + num(item.qty) * num(item.harga), 0);
-          const saldoAwal = uangAwal.value.trim() === '' ? null : num(uangAwal.value);
           // Saldo setelah transaksi menjadi uang awal untuk transaksi baru berikutnya.
           const saldoBerikutnya = saldoAwal === null ? '' : String(Math.max(0, saldoAwal - total));
           const transaction = {
@@ -627,7 +663,7 @@
           }
         } finally {
           transactionSaveInProgress = false;
-          saveTransactionBtn.disabled = false;
+          recalculate();
         }
       }
 
