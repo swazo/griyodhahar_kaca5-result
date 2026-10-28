@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pengeluaran Belanja Online - Versi Ringkas</title>
+  <title>Daftar Pengeluaran Nama Tempat Belanja</title>
   <script>
     // Saat halaman dimuat ulang, selalu mulai dari bagian paling atas.
     // Matikan pemulihan posisi scroll otomatis dari browser.
@@ -130,19 +130,14 @@
 <body>
   <main class="wrap">
     <header class="hero">
-      <div class="eyebrow">Kalkulator sederhana</div>
-      <h1>Pengeluaran Setelah Belanja</h1>
-      <p class="subtitle">Catat belanja, lihat total pengeluaran dan sisa uang secara otomatis.</p>
-      <div class="version-note">RIWAYAT HARIAN • TANGGAL OTOMATIS • GOOGLE SHEETS • BATAS BUDGET • REFRESH KE ATAS</div>
-    </header>
+           <h1>Daftar Transaksi Tempat Belanja</h1>
+      </header>
 
     <section class="card no-print">
-      <h2 class="section-title"><span class="number-icon">☁</span> Simpan Online ke Google Sheets</h2>
-      <p class="subtitle" style="font-size:13px; margin:-5px 0 14px;">Alamat Google Sheets ditanam di dalam file website, jadi Anda tidak perlu mengisi URL di halaman ini. Cukup masukkan kunci akses.</p>
-      <div class="cloud-grid" style="grid-template-columns:1fr;">
+        <div class="cloud-grid" style="grid-template-columns:1fr;">
         <div>
           <label for="accessKey">Kunci akses</label>
-          <input id="accessKey" type="password" autocomplete="off" placeholder="Masukkan kunci yang sama dari Code.gs">
+          <input id="accessKey" type="password" autocomplete="off" placeholder="Input Access Key">
         </div>
       </div>
       <div class="actions">
@@ -154,16 +149,16 @@
     </section>
 
     <section class="card">
-      <h2 class="section-title"><span class="number-icon">1</span> Informasi Belanja</h2>
+      <h2 class="section-title"><span class="number-icon">1</span> Informasi Tempat Belanja</h2>
       <div class="budget-grid">
         <div>
-          <label>Tanggal belanja (otomatis)</label>
+          <label>Tanggal</label>
           <div class="date-display" aria-live="polite"><span class="calendar-icon" aria-hidden="true">📅</span><span id="tanggalHariIni">Tanggal hari ini</span></div>
           <input id="tanggal" type="hidden" />
           <p class="field-note">Tanggal mengikuti hari ini secara otomatis dan tidak perlu dipilih.</p>
         </div>
         <div>
-          <label for="uangAwal">Uang awal / uang yang dibawa (Rp)</label>
+          <label for="uangAwal">Budget Harian (Rp)</label>
           <input id="uangAwal" type="number" min="0" step="1000" inputmode="numeric" placeholder="Contoh: 500000" />
           <p class="field-note">Sisa uang setelah transaksi disimpan otomatis menjadi uang awal untuk transaksi berikutnya.</p>
         </div>
@@ -172,15 +167,15 @@
 
     <section class="card">
       <div class="items-head">
-        <h2 class="section-title"><span class="number-icon">2</span> Daftar Barang Belanja</h2>
-        <button type="button" class="btn btn-primary" id="tambahBtn">＋ Tambah Barang</button>
+        <h2 class="section-title"><span class="number-icon">2</span> Daftar Tempat Belanja</h2>
+        <button type="button" class="btn btn-primary" id="tambahBtn">＋ Tambah Tempat</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th class="col-no">No.</th>
-              <th>Nama barang</th>
+              <th>Nama Tempat Belanja</th>
               <th class="col-price">Harga (Rp)</th>
               <th class="col-total">Subtotal</th>
               <th class="col-action no-print"></th>
