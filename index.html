@@ -328,7 +328,7 @@
         tr.dataset.id = String(id);
         tr.innerHTML = `
           <td class="col-no row-number"></td>
-          <td><input type="text" class="nama" aria-label="Nama barang" placeholder="Contoh: Mbah Sayur, dst" maxlength="120"></td>
+          <td><input type="text" class="nama" aria-label="Nama barang" placeholder="Contoh: Beras" maxlength="120"></td>
           <td><input type="number" class="harga" aria-label="Harga barang" min="0" step="100" inputmode="numeric" placeholder="0"></td>
           <td class="col-total subtotal">Rp0</td>
           <td class="col-action no-print"><button type="button" class="remove" aria-label="Hapus barang" title="Hapus barang">×</button></td>`;
@@ -539,9 +539,11 @@
         try { localStorage.removeItem(CONFIG_KEY); } catch (_) {}
         // Tanggal form selalu hari ini; tanggal transaksi lama tetap tersimpan di riwayat.
         refreshTodayDate();
-        // Saat halaman dibuka/di-refresh, uang awal selalu kembali ke 0 sesuai permintaan pengguna.
-        // Nilai lama di localStorage tidak dipulihkan untuk field budget.
-        uangAwal.value = '0';
+        // Pulihkan saldo/budget terakhir yang tersimpan setelah transaksi, termasuk saat halaman di-refresh.
+        // Mulai dari Rp0 hanya bila belum ada nilai budget yang tersimpan.
+        uangAwal.value = (data && data.uangAwal !== undefined && data.uangAwal !== null && data.uangAwal !== '')
+          ? String(data.uangAwal)
+          : '0';
         const savedRows = Array.isArray(data?.rows) ? data.rows : [];
         if (savedRows.length) savedRows.forEach(row => addRow(row));
         else addRow();
