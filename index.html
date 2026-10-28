@@ -151,7 +151,7 @@
         <div>
           <label for="uangAwal">Uang awal / uang yang dibawa (Rp)</label>
           <input id="uangAwal" type="number" min="0" step="1000" inputmode="numeric" placeholder="Contoh: 500000" />
-          <p class="field-note">Masukkan uang yang tersedia sebelum belanja.</p>
+          <p class="field-note">Sisa uang setelah transaksi disimpan otomatis menjadi uang awal untuk transaksi berikutnya.</p>
         </div>
       </div>
     </section>
@@ -536,11 +536,15 @@
         }
         const date = tanggal.value || todayLocal();
         const total = items.reduce((sum, item) => sum + num(item.qty) * num(item.harga), 0);
+        const saldoAwal = uangAwal.value.trim() === '' ? null : num(uangAwal.value);
+        // Saldo setelah transaksi menjadi uang awal untuk transaksi baru berikutnya.
+        // Jika pengeluaran melebihi saldo, sisa uang yang bisa dibawa adalah Rp0.
+        const saldoBerikutnya = saldoAwal === null ? '' : String(Math.max(0, saldoAwal - total));
         const transaction = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           tanggal: date,
           createdAt: Date.now(),
-          uangAwal: uangAwal.value === '' ? null : num(uangAwal.value),
+          uangAwal: saldoAwal,
           items,
           total,
           synced: false
@@ -553,7 +557,8 @@
         renderHistory();
         recalculate();
         tanggal.value = todayLocal();
-        uangAwal.value = '';
+        // Keep the remaining cash visible and carry it into the next transaction.
+        uangAwal.value = saldoBerikutnya;
         rows = [];
         nextId = 1;
         tbody.innerHTML = '';
